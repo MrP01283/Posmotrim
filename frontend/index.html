@@ -328,7 +328,8 @@
 
 <script>
 
-const API_URL = "http://localhost:5000/api/generate";
+// The backend serves this page too, so the API works on any host and port.
+const API_URL = "/api/generate";
 
 
 async function generateLesson() {
