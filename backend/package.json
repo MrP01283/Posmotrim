@@ -1,0 +1,17 @@
+{
+  "name": "ai-teacher-assistant-backend",
+  "version": "1.0.0",
+  "description": "Simple backend for AI Teacher Assistant demo",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {}
+}
