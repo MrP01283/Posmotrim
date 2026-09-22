@@ -9,13 +9,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDirectory = path.join(__dirname, "..", "frontend");
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"]
+    origin: "http://localhost:5173"
   })
 );
 app.use(express.json());
@@ -27,16 +26,8 @@ app.post("/api/generate", async (req, res) => {
     return res.status(400).json({ error: "Заполните все поля" });
   }
 
-  if (!GEMINI_API_KEY) {
-    return res.status(500).json({
-      error: "Не найден GEMINI_API_KEY. Создайте файл backend/.env по примеру backend/.env.example и добавьте в него ключ Gemini."
-    });
-  }
-
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-      {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -46,7 +37,7 @@ app.post("/api/generate", async (req, res) => {
         systemInstruction: {
           parts: [
             {
-              text: "Ты помощник преподавателя. Отвечай только валидным JSON без Markdown и без пояснений."
+              text: "Ты помощник преподавателя. Отвечай только валидным JSON без markdown и без пояснений."
             }
           ]
         },
@@ -84,48 +75,13 @@ app.post("/api/generate", async (req, res) => {
           }
         ],
         generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: {
-              type: "object",
-              additionalProperties: false,
-              properties: {
-                explanation: { type: "string" },
-                lessonPlan: {
-                  type: "array",
-                  items: { type: "string" }
-                },
-                quiz: {
-                  type: "array",
-                  minItems: 5,
-                  maxItems: 5,
-                  items: {
-                    type: "object",
-                    additionalProperties: false,
-                    properties: {
-                      question: { type: "string" },
-                      options: {
-                        type: "array",
-                        minItems: 4,
-                        maxItems: 4,
-                        items: { type: "string" }
-                      },
-                      correctAnswer: { type: "string" }
-                    },
-                    required: ["question", "options", "correctAnswer"]
-                  }
-                },
-                homework: { type: "string" }
-              },
-              required: ["explanation", "lessonPlan", "quiz", "homework"]
-          }
+          responseMimeType: "application/json"
         }
       })
-    }
-    );
+    });
 
     if (!response.ok) {
-      const errorDetails = await response.text();
-      throw new Error(`Gemini API request failed: ${errorDetails}`);
+      throw new Error("Gemini API request failed");
     }
 
     const data = await response.json();
@@ -134,7 +90,7 @@ app.post("/api/generate", async (req, res) => {
       .join("");
 
     if (!generatedText) {
-      throw new Error("Gemini API returned an empty response");
+      throw new Error("Gemini API returned empty response");
     }
 
     return res.json(JSON.parse(generatedText));
@@ -144,13 +100,8 @@ app.post("/api/generate", async (req, res) => {
   }
 });
 
-// The API and the browser interface are served by one application in production.
 app.use(express.static(frontendDirectory));
 
-app.get("*", (req, res) => {
-  res.sendFile(path.join(frontendDirectory, "index.html"));
-});
-
 app.listen(PORT, () => {
-  console.log(`AI Teacher Assistant is running on http://localhost:${PORT}`);
+  console.log(`Backend is running on http://localhost:${PORT}`);
 });
