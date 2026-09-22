@@ -8,7 +8,8 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const AI_API_KEY = process.env.AI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDirectory = path.join(__dirname, "..", "frontend");
 
@@ -26,28 +27,32 @@ app.post("/api/generate", async (req, res) => {
     return res.status(400).json({ error: "Заполните все поля" });
   }
 
-  if (!AI_API_KEY) {
-    return res.status(500).json({ error: "AI_API_KEY is not configured" });
+  if (!GEMINI_API_KEY) {
+    return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
   }
 
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+      {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${AI_API_KEY}`
+        "x-goog-api-key": GEMINI_API_KEY
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        input: [
+        systemInstruction: {
+          parts: [
+            {
+              text: "Ты помощник преподавателя. Отвечай только валидным JSON без Markdown и без пояснений."
+            }
+          ]
+        },
+        contents: [
           {
-            role: "system",
-            content:
-              "Ты помощник преподавателя. Отвечай только валидным JSON без markdown и без пояснений."
-          },
-          {
-            role: "user",
-            content: `Создай учебные материалы для демо-сайта AI Teacher Assistant.
+            parts: [
+              {
+                text: `Создай учебные материалы для демо-сайта AI Teacher Assistant.
 
 Предмет: ${subject}
 Тема урока: ${topic}
@@ -72,14 +77,13 @@ app.post("/api/generate", async (req, res) => {
 - у каждого вопроса должно быть ровно 4 варианта ответа;
 - correctAnswer должен полностью совпадать с одним из вариантов options;
 - не добавляй текст вне JSON.`
+              }
+            ]
           }
         ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "teacher_assistant_materials",
-            strict: true,
-            schema: {
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
               type: "object",
               additionalProperties: false,
               properties: {
@@ -111,21 +115,24 @@ app.post("/api/generate", async (req, res) => {
                 homework: { type: "string" }
               },
               required: ["explanation", "lessonPlan", "quiz", "homework"]
-            }
           }
         }
       })
-    });
+    }
+    );
 
     if (!response.ok) {
-      throw new Error("AI API request failed");
+      const errorDetails = await response.text();
+      throw new Error(`Gemini API request failed: ${errorDetails}`);
     }
 
     const data = await response.json();
-    const generatedText = data.output_text;
+    const generatedText = data.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text || "")
+      .join("");
 
     if (!generatedText) {
-      throw new Error("AI API returned empty response");
+      throw new Error("Gemini API returned an empty response");
     }
 
     return res.json(JSON.parse(generatedText));
