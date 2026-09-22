@@ -1,8 +1,6 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
-import path from "path";
-import { fileURLToPath } from "url";
 
 dotenv.config();
 
@@ -10,8 +8,6 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = "gemini-2.0-flash";
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const frontendDirectory = path.join(__dirname, "..", "frontend");
 
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
@@ -41,7 +37,7 @@ const blockSchema = {
   required: ["id", "title", "duration", "studentContent", "teacherNotes"]
 };
 
-function validateLessonSettings(body) {
+function validateLessonSettings(body = {}) {
   const { subject, topic, level, lessonGoal, totalDuration, blocks } = body;
 
   if (!subject || !topic || !level || !lessonGoal || !Number.isFinite(Number(totalDuration)) || !Array.isArray(blocks) || blocks.length === 0) {
@@ -79,7 +75,7 @@ function buildLessonPrompt(settings) {
 Выбранные блоки: ${JSON.stringify(blocks)}
 Настройки мини-теста: ${JSON.stringify(quizSettings || null)}
 
-Верни только JSON. Поля lesson: subject, topic, goal, totalDuration и blocks. Верни ровно те блоки и в том же порядке, которые есть в списке. Не добавляй блоки, сохраняй их id и duration, учитывай teacherNote, цель и уровень. Для блока quiz добавь questions с ${quizSettings?.questionCount || 0} вопросами; у каждого ровно 4 options и correctAnswer должен совпадать с option.`;
+Верни только JSON с полями subject, topic, goal, totalDuration и blocks. Верни ровно те блоки и в том же порядке, которые есть в списке. Не добавляй блоки, сохраняй их id и duration, учитывай teacherNote, цель и уровень. Для блока quiz добавь questions с ${quizSettings?.questionCount || 0} вопросами; у каждого ровно 4 options и correctAnswer должен совпадать с одним из options.`;
 }
 
 function buildBlockPrompt(settings, block) {
@@ -95,11 +91,16 @@ function buildBlockPrompt(settings, block) {
 }
 
 async function askGemini(prompt, schema) {
-  if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
 
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": GEMINI_API_KEY
+    },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: "Отвечай только валидным JSON без markdown." }] },
       contents: [{ parts: [{ text: prompt }] }],
@@ -107,16 +108,24 @@ async function askGemini(prompt, schema) {
     })
   });
 
-  if (!response.ok) throw new Error(`Gemini API returned ${response.status}`);
+  if (!response.ok) {
+    throw new Error(`Gemini API returned ${response.status}`);
+  }
+
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("");
-  if (!text) throw new Error("Gemini API returned empty response");
+  if (!text) {
+    throw new Error("Gemini API returned empty response");
+  }
+
   return JSON.parse(text);
 }
 
 app.post("/api/generate", async (req, res) => {
   const validationError = validateLessonSettings(req.body);
-  if (validationError) return res.status(400).json({ error: validationError });
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
 
   try {
     const lesson = await askGemini(buildLessonPrompt(req.body), {
@@ -127,10 +136,16 @@ app.post("/api/generate", async (req, res) => {
         topic: { type: "string" },
         goal: { type: "string" },
         totalDuration: { type: "number" },
-        blocks: { type: "array", minItems: req.body.blocks.length, maxItems: req.body.blocks.length, items: blockSchema }
+        blocks: {
+          type: "array",
+          minItems: req.body.blocks.length,
+          maxItems: req.body.blocks.length,
+          items: blockSchema
+        }
       },
       required: ["subject", "topic", "goal", "totalDuration", "blocks"]
     });
+
     return res.json({ success: true, lesson });
   } catch (error) {
     console.error(error);
@@ -141,26 +156,26 @@ app.post("/api/generate", async (req, res) => {
 app.post("/api/regenerate-block", async (req, res) => {
   const validationError = validateLessonSettings(req.body);
   const block = req.body.blocks?.find((item) => item.id === req.body.blockId);
+
   if (validationError || !req.body.blockId || !block) {
     return res.status(400).json({ error: validationError || "Укажите существующий blockId" });
   }
 
   try {
-    const blockSchemaForRequest = JSON.parse(JSON.stringify(blockSchema));
+    const schema = JSON.parse(JSON.stringify(blockSchema));
     if (block.id === "quiz") {
       const count = Number(req.body.quizSettings.questionCount);
-      blockSchemaForRequest.properties.questions.minItems = count;
-      blockSchemaForRequest.properties.questions.maxItems = count;
+      schema.properties.questions.minItems = count;
+      schema.properties.questions.maxItems = count;
     }
-    const regeneratedBlock = await askGemini(buildBlockPrompt(req.body, block), blockSchemaForRequest);
+
+    const regeneratedBlock = await askGemini(buildBlockPrompt(req.body, block), schema);
     return res.json({ success: true, block: regeneratedBlock });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Не удалось получить ответ от AI" });
   }
 });
-
-app.use(express.static(frontendDirectory));
 
 app.listen(PORT, () => {
   console.log(`Backend is running on http://localhost:${PORT}`);

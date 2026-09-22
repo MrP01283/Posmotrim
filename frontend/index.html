@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>AI Teacher Assistant</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Inter, Arial, sans-serif;
+      background: #f4f6f8;
+      color: #172033;
+      min-height: 100vh;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 20px 7%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 21px;
+      font-weight: 800;
+    }
+
+    .logo span {
+      color: #4f46e5;
+    }
+
+    .badge {
+      font-size: 13px;
+      background: #eef2ff;
+      color: #4338ca;
+      padding: 7px 12px;
+      border-radius: 20px;
+    }
+
+    main {
+      width: 92%;
+      max-width: 1100px;
+      margin: 55px auto;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 35px;
+    }
+
+    .hero h1 {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+
+    .hero p {
+      color: #6b7280;
+      font-size: 17px;
+    }
+
+    .card {
+      max-width: 720px;
+      margin: auto;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+      padding: 30px;
+      box-shadow: 0 10px 35px rgba(0,0,0,0.05);
+    }
+
+    .field {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      font-size: 15px;
+      outline: none;
+      transition: .2s;
+      background: white;
+    }
+
+    input:focus, select:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79,70,229,.1);
+    }
+
+    button {
+      width: 100%;
+      border: 0;
+      background: #4f46e5;
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    button:hover {
+      background: #4338ca;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #status {
+      display: none;
+      margin-top: 20px;
+      text-align: center;
+      color: #6b7280;
+    }
+
+    #error {
+      display: none;
+      margin-top: 18px;
+      padding: 13px;
+      background: #fef2f2;
+      color: #b91c1c;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    #result {
+      display: none;
+      margin-top: 35px;
+    }
+
+    .result-header {
+      margin-bottom: 20px;
+    }
+
+    .result-header h2 {
+      font-size: 25px;
+    }
+
+    .section {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 15px;
+    }
+
+    .section h3 {
+      font-size: 17px;
+      margin-bottom: 12px;
+    }
+
+    .section p {
+      line-height: 1.7;
+      color: #4b5563;
+    }
+
+    .section ul {
+      padding-left: 22px;
+    }
+
+    .section li {
+      margin: 9px 0;
+      line-height: 1.5;
+    }
+
+    .question {
+      padding: 18px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .question:last-child {
+      border: none;
+    }
+
+    .question-title {
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .option {
+      padding: 8px 12px;
+      margin: 5px 0;
+      background: #f8fafc;
+      border-radius: 7px;
+      font-size: 14px;
+    }
+
+    .answer {
+      margin-top: 9px;
+      color: #15803d;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    @media(max-width:600px) {
+      .hero h1 {
+        font-size: 30px;
+      }
+
+      main {
+        margin-top: 35px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">AI <span>Teacher</span></div>
+  <div class="badge">AI Assistant</div>
+</header>
+
+<main>
+
+  <div class="hero">
+    <h1>Подготовьте урок за минуту</h1>
+    <p>
+      Введите тему — искусственный интеллект создаст план,
+      объяснение, тест и домашнее задание.
+    </p>
+  </div>
+
+  <div class="card">
+
+    <div class="field">
+      <label>Предмет</label>
+      <input
+        id="subject"
+        type="text"
+        placeholder="Например: Информатика"
+        value="Информатика"
+      >
+    </div>
+
+    <div class="field">
+      <label>Тема занятия</label>
+      <input
+        id="topic"
+        type="text"
+        placeholder="Например: Циклы в Python"
+      >
+    </div>
+
+    <div class="field">
+      <label>Уровень студентов</label>
+
+      <select id="level">
+        <option>9 класс</option>
+        <option>10 класс</option>
+        <option>11 класс</option>
+        <option selected>1 курс</option>
+        <option>2 курс</option>
+        <option>3 курс</option>
+        <option>4 курс</option>
+      </select>
+    </div>
+
+    <button id="generateButton" onclick="generateLesson()">
+      ✦ Создать занятие с AI
+    </button>
+
+    <div id="status">
+      AI подготавливает занятие...
+    </div>
+
+    <div id="error"></div>
+
+  </div>
+
+
+  <div id="result">
+
+    <div class="result-header">
+      <h2 id="resultTitle">Готовое занятие</h2>
+    </div>
+
+    <div class="section">
+      <h3>📖 Объяснение темы</h3>
+      <p id="explanation"></p>
+    </div>
+
+    <div class="section">
+      <h3>📋 План занятия</h3>
+      <ul id="lessonPlan"></ul>
+    </div>
+
+    <div class="section">
+      <h3>🧠 Мини-тест</h3>
+      <div id="quiz"></div>
+    </div>
+
+    <div class="section">
+      <h3>🏠 Домашнее задание</h3>
+      <p id="homework"></p>
+    </div>
+
+  </div>
+
+</main>
+
+
+<script>
+
+const API_URL = "http://localhost:5000/api/generate";
+
+
+async function generateLesson() {
+
+  const subject = document.getElementById("subject").value.trim();
+  const topic = document.getElementById("topic").value.trim();
+  const level = document.getElementById("level").value;
+
+  const button = document.getElementById("generateButton");
+  const status = document.getElementById("status");
+  const errorBox = document.getElementById("error");
+  const result = document.getElementById("result");
+
+
+  // Проверка полей
+  if (!subject || !topic || !level) {
+    showError("Пожалуйста, заполните все поля.");
+    return;
+  }
+
+
+  // Loading
+  button.disabled = true;
+  button.innerText = "Генерация...";
+  status.style.display = "block";
+  errorBox.style.display = "none";
+  result.style.display = "none";
+
+
+  try {
+
+    const response = await fetch(API_URL, {
+
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        subject,
+        topic,
+        level
+      })
+
+    });
+
+
+    const data = await response.json();
+
+
+    if (!response.ok) {
+      throw new Error(data.error || "Ошибка сервера");
+    }
+
+
+    renderResult(data, topic);
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    showError(
+      "Не удалось связаться с AI. Проверьте, запущен ли backend на localhost:5000."
+    );
+
+  } finally {
+
+    button.disabled = false;
+    button.innerText = "✦ Создать занятие с AI";
+    status.style.display = "none";
+
+  }
+
+}
+
+
+
+function renderResult(data, topic) {
+
+  document.getElementById("resultTitle").innerText =
+    "Занятие: " + topic;
+
+
+  // Объяснение
+
+  document.getElementById("explanation").innerText =
+    data.explanation || "Нет данных";
+
+
+  // План занятия
+
+  const lessonPlan = document.getElementById("lessonPlan");
+
+  lessonPlan.innerHTML = "";
+
+  (data.lessonPlan || []).forEach(item => {
+
+    const li = document.createElement("li");
+
+    li.innerText = item;
+
+    lessonPlan.appendChild(li);
+
+  });
+
+
+  // Тест
+
+  const quizContainer = document.getElementById("quiz");
+
+  quizContainer.innerHTML = "";
+
+
+  (data.quiz || []).forEach((item, index) => {
+
+    const question = document.createElement("div");
+
+    question.className = "question";
+
+
+    const options = (item.options || [])
+      .map(option =>
+        `<div class="option">${escapeHTML(option)}</div>`
+      )
+      .join("");
+
+
+    question.innerHTML = `
+
+      <div class="question-title">
+        ${index + 1}. ${escapeHTML(item.question)}
+      </div>
+
+      ${options}
+
+      <div class="answer">
+        ✓ Правильный ответ:
+        ${escapeHTML(item.correctAnswer)}
+      </div>
+
+    `;
+
+
+    quizContainer.appendChild(question);
+
+  });
+
+
+  // Домашка
+
+  document.getElementById("homework").innerText =
+    data.homework || "Нет домашнего задания";
+
+
+  // Показываем результат
+
+  const result = document.getElementById("result");
+
+  result.style.display = "block";
+
+
+  result.scrollIntoView({
+    behavior: "smooth"
+  });
+
+}
+
+
+
+function showError(message) {
+
+  const errorBox = document.getElementById("error");
+
+  errorBox.innerText = message;
+
+  errorBox.style.display = "block";
+
+}
+
+
+
+function escapeHTML(text) {
+
+  const div = document.createElement("div");
+
+  div.textContent = text || "";
+
+  return div.innerHTML;
+
+}
+
+</script>
+
+</body>
+</html>
