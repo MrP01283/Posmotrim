@@ -28,7 +28,9 @@ app.post("/api/generate", async (req, res) => {
   }
 
   if (!GEMINI_API_KEY) {
-    return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
+    return res.status(500).json({
+      error: "Не найден GEMINI_API_KEY. Создайте файл backend/.env по примеру backend/.env.example и добавьте в него ключ Gemini."
+    });
   }
 
   try {

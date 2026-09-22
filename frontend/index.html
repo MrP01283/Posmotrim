@@ -394,6 +394,7 @@ async function generateLesson() {
     console.error(error);
 
     showError(
+      error.message ||
       "Не удалось связаться с AI. Проверьте, запущен ли backend на localhost:5000."
     );
 
