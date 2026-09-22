@@ -75,7 +75,40 @@ app.post("/api/generate", async (req, res) => {
           }
         ],
         generationConfig: {
-          responseMimeType: "application/json"
+          responseMimeType: "application/json",
+          responseSchema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                explanation: { type: "string" },
+                lessonPlan: {
+                  type: "array",
+                  items: { type: "string" }
+                },
+                quiz: {
+                  type: "array",
+                  minItems: 5,
+                  maxItems: 5,
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      question: { type: "string" },
+                      options: {
+                        type: "array",
+                        minItems: 4,
+                        maxItems: 4,
+                        items: { type: "string" }
+                      },
+                      correctAnswer: { type: "string" }
+                    },
+                    required: ["question", "options", "correctAnswer"]
+                  }
+                },
+                homework: { type: "string" }
+              },
+              required: ["explanation", "lessonPlan", "quiz", "homework"]
+          }
         }
       })
     });
